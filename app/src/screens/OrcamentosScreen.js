@@ -25,25 +25,43 @@ export default function OrcamentosScreen({ navigation }) {
   }, []);
 
   const loadCondominios = async () => {
-    const { data } = await supabase.from('condominios').select('*').eq('user_id', user.id);
-    setCondominios(data || []);
+    try {
+      const { data, error } = await supabase.from('condominios').select('*').eq('user_id', user.id);
+      if (error) throw error;
+      setCondominios(data || []);
+    } catch (err) {
+      console.error('Error loading condominios:', err);
+      Alert.alert('Erro', 'Não foi possível carregar os condomínios: ' + err.message);
+    }
   };
 
   const loadOrcamentos = async () => {
-    const { data } = await supabase
-      .from('orcamentos')
-      .select('*, condominios(*)')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
-    setOrcamentos(data || []);
+    try {
+      const { data, error } = await supabase
+        .from('orcamentos')
+        .select('*, condominios(*)')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      setOrcamentos(data || []);
+    } catch (err) {
+      console.error('Error loading orcamentos:', err);
+      Alert.alert('Erro', 'Não foi possível carregar os orçamentos: ' + err.message);
+    }
   };
 
   const pickImage = async () => {
-    let result = await ImagePicker.launchCameraAsync({
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permissão necessária', 'Precisamos de acesso à galeria para selecionar uma foto.');
+      return;
+    }
+
+    let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [4, 3],
-      quality: 1,
+      quality: 0.8,
     });
 
     if (!result.canceled) {
@@ -76,7 +94,7 @@ export default function OrcamentosScreen({ navigation }) {
         }
       } catch (err) {
         console.error('Erro no upload da imagem:', err);
-        Alert.alert('Erro', 'Não foi possível enviar a imagem.');
+        Alert.alert('Erro', 'Não foi possível enviar a imagem: ' + err.message);
         return;
       }
     } else {
@@ -90,23 +108,30 @@ export default function OrcamentosScreen({ navigation }) {
       image_url: imageUrl,
     };
 
-    if (editingId) {
-      await supabase
-        .from('orcamentos')
-        .update(orcamentoData)
-        .eq('id', editingId);
-    } else {
-      await supabase
-        .from('orcamentos')
-        .insert({ ...orcamentoData, user_id: user.id });
+    try {
+      if (editingId) {
+        const { error } = await supabase
+          .from('orcamentos')
+          .update(orcamentoData)
+          .eq('id', editingId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('orcamentos')
+          .insert({ ...orcamentoData, user_id: user.id });
+        if (error) throw error;
+      }
+      setModalVisible(false);
+      setCondominioId('');
+      setDescricao('');
+      setValor('');
+      setImage(null);
+      setEditingId(null);
+      loadOrcamentos();
+    } catch (err) {
+      console.error('Error saving orcamento:', err);
+      Alert.alert('Erro', 'Não foi possível salvar o orçamento: ' + err.message);
     }
-    setModalVisible(false);
-    setCondominioId('');
-    setDescricao('');
-    setValor('');
-    setImage(null);
-    setEditingId(null);
-    loadOrcamentos();
   };
 
   const handleEdit = (item) => {

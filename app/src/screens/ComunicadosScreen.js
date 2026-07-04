@@ -24,25 +24,43 @@ export default function ComunicadosScreen({ navigation }) {
   }, []);
 
   const loadCondominios = async () => {
-    const { data } = await supabase.from('condominios').select('*').eq('user_id', user.id);
-    setCondominios(data || []);
+    try {
+      const { data, error } = await supabase.from('condominios').select('*').eq('user_id', user.id);
+      if (error) throw error;
+      setCondominios(data || []);
+    } catch (err) {
+      console.error('Error loading condominios:', err);
+      Alert.alert('Erro', 'Não foi possível carregar os condomínios: ' + err.message);
+    }
   };
 
   const loadComunicados = async () => {
-    const { data } = await supabase
-      .from('comunicados')
-      .select('*, condominios(*)')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
-    setComunicados(data || []);
+    try {
+      const { data, error } = await supabase
+        .from('comunicados')
+        .select('*, condominios(*)')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      setComunicados(data || []);
+    } catch (err) {
+      console.error('Error loading comunicados:', err);
+      Alert.alert('Erro', 'Não foi possível carregar os comunicados: ' + err.message);
+    }
   };
 
   const pickImage = async () => {
-    let result = await ImagePicker.launchCameraAsync({
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permissão necessária', 'Precisamos de acesso à galeria para selecionar uma foto.');
+      return;
+    }
+
+    let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [4, 3],
-      quality: 1,
+      quality: 0.8,
     });
 
     if (!result.canceled) {
@@ -75,29 +93,36 @@ export default function ComunicadosScreen({ navigation }) {
         }
       } catch (err) {
         console.error('Erro no upload da imagem:', err);
-        Alert.alert('Erro', 'Não foi possível enviar a imagem.');
+        Alert.alert('Erro', 'Não foi possível enviar a imagem: ' + err.message);
         return;
       }
     } else {
       imageUrl = image;
     }
 
-    if (editingId) {
-      await supabase
-        .from('comunicados')
-        .update({ condominio_id: condominioId, descricao, image_url: imageUrl })
-        .eq('id', editingId);
-    } else {
-      await supabase
-        .from('comunicados')
-        .insert({ condominio_id: condominioId, descricao, image_url: imageUrl, user_id: user.id });
+    try {
+      if (editingId) {
+        const { error } = await supabase
+          .from('comunicados')
+          .update({ condominio_id: condominioId, descricao, image_url: imageUrl })
+          .eq('id', editingId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('comunicados')
+          .insert({ condominio_id: condominioId, descricao, image_url: imageUrl, user_id: user.id });
+        if (error) throw error;
+      }
+      setModalVisible(false);
+      setCondominioId('');
+      setDescricao('');
+      setImage(null);
+      setEditingId(null);
+      loadComunicados();
+    } catch (err) {
+      console.error('Error saving comunicado:', err);
+      Alert.alert('Erro', 'Não foi possível salvar o comunicado: ' + err.message);
     }
-    setModalVisible(false);
-    setCondominioId('');
-    setDescricao('');
-    setImage(null);
-    setEditingId(null);
-    loadComunicados();
   };
 
   const handleEdit = (item) => {

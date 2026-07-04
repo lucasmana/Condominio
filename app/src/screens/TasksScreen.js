@@ -24,17 +24,56 @@ export default function TasksScreen({ navigation }) {
   }, []);
 
   const loadCondominios = async () => {
-    const { data } = await supabase.from('condominios').select('*').eq('user_id', user.id);
-    setCondominios(data || []);
+    try {
+      const { data, error } = await supabase.from('condominios').select('*').eq('user_id', user.id);
+      if (error) throw error;
+      setCondominios(data || []);
+    } catch (err) {
+      console.error('Error loading condominios:', err);
+      Alert.alert('Erro', 'Não foi possível carregar os condomínios: ' + err.message);
+    }
   };
 
   const loadTasks = async () => {
-    const { data } = await supabase
-      .from('tasks')
-      .select('*, condominios(*)')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
-    setTasks(data || []);
+    try {
+      const { data, error } = await supabase
+        .from('tasks')
+        .select('*, condominios(*)')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      
+      const parsedData = (data || []).map(item => {
+        let desc = item.descricao || '';
+        let level = item.nivel_urgencia;
+        
+        if (!level) {
+          if (desc.endsWith(' [EMERGENCIA]')) {
+            desc = desc.substring(0, desc.lastIndexOf(' [EMERGENCIA]'));
+            level = 'emergencia';
+          } else if (desc.endsWith(' [URGENTE]')) {
+            desc = desc.substring(0, desc.lastIndexOf(' [URGENTE]'));
+            level = 'urgente';
+          } else if (desc.endsWith(' [SEM_URGENCIA]')) {
+            desc = desc.substring(0, desc.lastIndexOf(' [SEM_URGENCIA]'));
+            level = 'sem_urgencia';
+          } else {
+            level = item.urgente ? 'urgente' : 'sem_urgencia';
+          }
+        }
+        
+        return {
+          ...item,
+          descricao: desc,
+          nivel_urgencia: level
+        };
+      });
+      
+      setTasks(parsedData);
+    } catch (err) {
+      console.error('Error loading tasks:', err);
+      Alert.alert('Erro', 'Não foi possível carregar as tarefas: ' + err.message);
+    }
   };
 
   // DD/MM/AAAA -> YYYY-MM-DD
@@ -77,16 +116,31 @@ export default function TasksScreen({ navigation }) {
   };
 
   const handleSave = async () => {
-    if (!condominioId || !descricao) {
-      Alert.alert('Erro', 'Preencha todos os campos!');
+    if (!descricao) {
+      Alert.alert('Erro', 'Preencha a descrição da tarefa!');
       return;
+    }
+
+    if (dataLimite) {
+      const parts = dataLimite.split('/');
+      if (parts.length !== 3 || parts[0].length > 2 || parts[1].length > 2 || parts[2].length !== 4) {
+        Alert.alert('Erro', 'Formato de data inválido! Use DD/MM/AAAA.');
+        return;
+      }
+      const day = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10);
+      const year = parseInt(parts[2], 10);
+      if (isNaN(day) || isNaN(month) || isNaN(year) || day < 1 || day > 31 || month < 1 || month > 12 || year < 1000) {
+        Alert.alert('Erro', 'Data inválida! Use uma data real no formato DD/MM/AAAA.');
+        return;
+      }
     }
 
     const formattedDate = parseDateToDb(dataLimite);
     const isUrgenteBoolean = nivelUrgencia === 'urgente' || nivelUrgencia === 'emergencia';
 
     const taskData = {
-      condominio_id: condominioId,
+      condominio_id: condominioId || null,
       descricao,
       urgente: isUrgenteBoolean,
       nivel_urgencia: nivelUrgencia,
@@ -100,10 +154,12 @@ export default function TasksScreen({ navigation }) {
           .update(taskData)
           .eq('id', editingId);
         if (error) {
-          if (error.message.includes('column "nivel_urgencia" of relation "tasks" does not exist')) {
+          if (error.message.includes('nivel_urgencia') || error.code === 'PGRST204') {
             const fallbackData = { ...taskData };
             delete fallbackData.nivel_urgencia;
-            await supabase.from('tasks').update(fallbackData).eq('id', editingId);
+            fallbackData.descricao = `${descricao} [${nivelUrgencia.toUpperCase()}]`;
+            const { error: fallbackError } = await supabase.from('tasks').update(fallbackData).eq('id', editingId);
+            if (fallbackError) throw fallbackError;
           } else {
             throw error;
           }
@@ -113,10 +169,12 @@ export default function TasksScreen({ navigation }) {
           .from('tasks')
           .insert({ ...taskData, user_id: user.id });
         if (error) {
-          if (error.message.includes('column "nivel_urgencia" of relation "tasks" does not exist')) {
+          if (error.message.includes('nivel_urgencia') || error.code === 'PGRST204') {
             const fallbackData = { ...taskData };
             delete fallbackData.nivel_urgencia;
-            await supabase.from('tasks').insert({ ...fallbackData, user_id: user.id });
+            fallbackData.descricao = `${descricao} [${nivelUrgencia.toUpperCase()}]`;
+            const { error: fallbackError } = await supabase.from('tasks').insert({ ...fallbackData, user_id: user.id });
+            if (fallbackError) throw fallbackError;
           } else {
             throw error;
           }
@@ -131,13 +189,13 @@ export default function TasksScreen({ navigation }) {
       loadTasks();
     } catch (err) {
       console.error('Error saving task:', err);
-      Alert.alert('Erro', 'Não foi possível salvar a tarefa.');
+      Alert.alert('Erro', 'Não foi possível salvar a tarefa: ' + err.message);
     }
   };
 
   const handleEdit = (item) => {
     setEditingId(item.id);
-    setCondominioId(item.condominio_id);
+    setCondominioId(item.condominio_id || '');
     setDescricao(item.descricao);
     setNivelUrgencia(item.nivel_urgencia || (item.urgente ? 'urgente' : 'sem_urgencia'));
     setDataLimite(formatDateToDisplay(item.data_limite));
@@ -169,7 +227,11 @@ export default function TasksScreen({ navigation }) {
       </View>
       <View style={styles.itemContentContainer}>
         <View style={styles.itemContent}>
-          <Text style={styles.itemCondo}>{item.condominios?.nome}</Text>
+          {item.condominios?.nome ? (
+            <Text style={styles.itemCondo}>{item.condominios.nome}</Text>
+          ) : (
+            <Text style={[styles.itemCondo, { color: Theme.Colors.textTertiary, fontStyle: 'italic' }]}>Sem Condomínio</Text>
+          )}
           <Text style={styles.itemDesc}>{item.descricao}</Text>
           <View style={styles.itemMeta}>
             <Text style={[styles.urgencyTextBadge, { color: getUrgencyColor(item) }]}>
@@ -236,7 +298,7 @@ export default function TasksScreen({ navigation }) {
               setEditingId(null);
               setCondominioId('');
               setDescricao('');
-              setUrgente(false);
+              setNivelUrgencia('sem_urgencia');
               setDataLimite('');
             }}>
               <Ionicons name="arrow-back" size={24} color={Theme.Colors.primary} />
@@ -255,7 +317,7 @@ export default function TasksScreen({ navigation }) {
               renderItem={({ item }) => (
                 <TouchableOpacity
                   style={[styles.condoOption, condominioId === item.id && styles.condoOptionSelected]}
-                  onPress={() => setCondominioId(item.id)}
+                  onPress={() => setCondominioId(condominioId === item.id ? '' : item.id)}
                 >
                   <Text style={[styles.condoOptionText, condominioId === item.id && styles.condoOptionTextSelected]}>
                     {item.nome}

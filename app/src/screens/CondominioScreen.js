@@ -26,12 +26,18 @@ export default function CondominioScreen({ navigation }) {
   }, []);
 
   const loadCondominios = async () => {
-    const { data } = await supabase
-      .from('condominios')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
-    setCondominios(data || []);
+    try {
+      const { data, error } = await supabase
+        .from('condominios')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      setCondominios(data || []);
+    } catch (err) {
+      console.error('Error loading condominios:', err);
+      Alert.alert('Erro', 'Não foi possível carregar os condomínios: ' + err.message);
+    }
   };
 
   const handleSave = async () => {
@@ -40,22 +46,29 @@ export default function CondominioScreen({ navigation }) {
       return;
     }
 
-    if (editingId) {
-      await supabase
-        .from('condominios')
-        .update({ nome, endereco, descricao })
-        .eq('id', editingId);
-    } else {
-      await supabase
-        .from('condominios')
-        .insert({ nome, endereco, descricao, user_id: user.id });
+    try {
+      if (editingId) {
+        const { error } = await supabase
+          .from('condominios')
+          .update({ nome, endereco, descricao })
+          .eq('id', editingId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('condominios')
+          .insert({ nome, endereco, descricao, user_id: user.id });
+        if (error) throw error;
+      }
+      setModalVisible(false);
+      setNome('');
+      setEndereco('');
+      setDescricao('');
+      setEditingId(null);
+      loadCondominios();
+    } catch (err) {
+      console.error('Error saving condominio:', err);
+      Alert.alert('Erro', 'Não foi possível salvar o condomínio: ' + err.message);
     }
-    setModalVisible(false);
-    setNome('');
-    setEndereco('');
-    setDescricao('');
-    setEditingId(null);
-    loadCondominios();
   };
 
   const handleEdit = (item) => {
