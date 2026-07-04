@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+    container_name: condominio-backend
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+    restart: unless-stopped
+
+  # Frontend Expo (Nota: Expo mobile é melhor rodado localmente, mas para web podemos usar)
+  # Para o app mobile, use `cd app && npm start`

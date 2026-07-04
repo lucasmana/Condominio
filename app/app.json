@@ -1,0 +1,39 @@
+{
+  "expo": {
+    "name": "Condominio",
+    "slug": "condominio-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "Permita acesso à câmera para adicionar fotos aos comunicados e orçamentos",
+        "NSPhotoLibraryUsageDescription": "Permita acesso à biblioteca de fotos para adicionar imagens"
+      }
+    },
+    "android": {
+      "package": "com.seuusername.condominio",
+      "permissions": ["CAMERA", "WRITE_EXTERNAL_STORAGE", "READ_EXTERNAL_STORAGE"]
+    },
+    "web": {},
+    "plugins": [
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Permita acesso às fotos para adicionar imagens aos comunicados e orçamentos",
+          "cameraPermission": "Permita acesso à câmera para tirar fotos"
+        }
+      ],
+      "expo-asset",
+      "expo-font"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "your-project-id-here"
+      }
+    }
+  }
+}
