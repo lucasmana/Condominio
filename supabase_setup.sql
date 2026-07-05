@@ -16,7 +16,7 @@ CREATE TABLE condominios (
 -- 2. CRIAR TABELA DE COMUNICADOS
 CREATE TABLE comunicados (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  condominio_id UUID NOT NULL REFERENCES condominios(id) ON DELETE CASCADE,
+  condominio_id UUID REFERENCES condominios(id) ON DELETE CASCADE,
   descricao TEXT NOT NULL,
   image_url TEXT,
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -26,7 +26,7 @@ CREATE TABLE comunicados (
 -- 3. CRIAR TABELA DE TAREFAS
 CREATE TABLE tasks (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  condominio_id UUID NOT NULL REFERENCES condominios(id) ON DELETE CASCADE,
+  condominio_id UUID REFERENCES condominios(id) ON DELETE CASCADE,
   descricao TEXT NOT NULL,
   urgente BOOLEAN DEFAULT FALSE,
   data_limite DATE,
@@ -37,7 +37,7 @@ CREATE TABLE tasks (
 -- 4. CRIAR TABELA DE ORÇAMENTOS
 CREATE TABLE orcamentos (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  condominio_id UUID NOT NULL REFERENCES condominios(id) ON DELETE CASCADE,
+  condominio_id UUID REFERENCES condominios(id) ON DELETE CASCADE,
   descricao TEXT NOT NULL,
   valor DECIMAL(10, 2) DEFAULT 0,
   image_url TEXT,

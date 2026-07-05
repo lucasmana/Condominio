@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, TextInput,
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as SecureStore from 'expo-secure-store';
+import { useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../config/supabase';
 import { useAuth } from '../context/AuthContext';
 import { Theme } from '../theme/theme';
@@ -52,12 +53,14 @@ export default function HomeScreen({ route }) {
     });
   };
 
-  useEffect(() => {
-    loadStats();
-    loadReports();
-    loadNotes();
-    checkLoginToast();
-  }, []);
+  useFocusEffect(
+    React.useCallback(() => {
+      loadStats();
+      loadReports();
+      loadNotes();
+      checkLoginToast();
+    }, [user.id])
+  );
 
   const checkLoginToast = async () => {
     try {

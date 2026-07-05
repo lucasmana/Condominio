@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, FlatList, Alert, Modal, Image } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, FlatList, Alert, Modal, Image, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import { useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../config/supabase';
 import { useAuth } from '../context/AuthContext';
 import { Theme } from '../theme/theme';
@@ -19,10 +20,12 @@ export default function OrcamentosScreen({ navigation }) {
   const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
 
-  useEffect(() => {
-    loadOrcamentos();
-    loadCondominios();
-  }, []);
+  useFocusEffect(
+    React.useCallback(() => {
+      loadOrcamentos();
+      loadCondominios();
+    }, [user.id])
+  );
 
   const loadCondominios = async () => {
     try {
@@ -70,8 +73,8 @@ export default function OrcamentosScreen({ navigation }) {
   };
 
   const handleSave = async () => {
-    if (!condominioId || !descricao || !valor) {
-      Alert.alert('Erro', 'Preencha todos os campos!');
+    if (!descricao || !valor) {
+      Alert.alert('Erro', 'Preencha a descrição e o valor!');
       return;
     }
 
@@ -102,7 +105,7 @@ export default function OrcamentosScreen({ navigation }) {
     }
 
     const orcamentoData = {
-      condominio_id: condominioId,
+      condominio_id: condominioId || null,
       descricao,
       valor: parseFloat(valor) || 0,
       image_url: imageUrl,
@@ -136,7 +139,7 @@ export default function OrcamentosScreen({ navigation }) {
 
   const handleEdit = (item) => {
     setEditingId(item.id);
-    setCondominioId(item.condominio_id);
+    setCondominioId(item.condominio_id || '');
     setDescricao(item.descricao);
     setValor(item.valor?.toString() || '');
     setImage(item.image_url);
@@ -159,38 +162,42 @@ export default function OrcamentosScreen({ navigation }) {
 
   const renderItem = ({ item }) => (
     <TouchableOpacity 
-      style={styles.item} 
+      style={styles.itemContainer} 
       onPress={() => handleEdit(item)}
       activeOpacity={0.8}
     >
-      <View style={styles.itemIconContainer}>
-        {item.image_url ? (
-          <Image source={{ uri: item.image_url }} style={styles.itemIconImage} />
-        ) : (
+      <View style={[
+        styles.itemCardPart,
+        item.image_url && { borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }
+      ]}>
+        <View style={styles.itemIconContainer}>
           <Ionicons name="wallet-outline" size={24} color={Theme.Colors.primary} />
-        )}
-      </View>
-      <View style={styles.itemContentContainer}>
-        <View style={styles.itemContent}>
-          <Text style={styles.itemCondo}>{item.condominios?.nome}</Text>
-          <Text style={styles.itemDesc}>{item.descricao}</Text>
-          {item.valor > 0 && (
-            <Text style={styles.itemValue}>R$ {item.valor.toFixed(2)}</Text>
-          )}
-          <Text style={styles.itemDate}>
-            {new Date(item.created_at).toLocaleDateString('pt-BR')}
-          </Text>
         </View>
-        <TouchableOpacity 
-          style={styles.deleteIconButton} 
-          onPress={(e) => {
-            e.stopPropagation();
-            confirmDelete(item);
-          }}
-        >
-          <Ionicons name="close" size={24} color="#888888" />
-        </TouchableOpacity>
+        <View style={styles.itemContentContainer}>
+          <View style={styles.itemContent}>
+            <Text style={styles.itemCondo}>{item.condominios?.nome || 'Geral (Sem Condomínio)'}</Text>
+            <Text style={styles.itemDesc}>{item.descricao}</Text>
+            {item.valor > 0 && (
+              <Text style={styles.itemValue}>R$ {item.valor.toFixed(2)}</Text>
+            )}
+            <Text style={styles.itemDate}>
+              {new Date(item.created_at).toLocaleDateString('pt-BR')}
+            </Text>
+          </View>
+          <TouchableOpacity 
+            style={styles.deleteIconButton} 
+            onPress={(e) => {
+              e.stopPropagation();
+              confirmDelete(item);
+            }}
+          >
+            <Ionicons name="close" size={24} color="#888888" />
+          </TouchableOpacity>
+        </View>
       </View>
+      {item.image_url && (
+        <Image source={{ uri: item.image_url }} style={styles.itemAttachedImage} />
+      )}
     </TouchableOpacity>
   );
 
@@ -244,62 +251,70 @@ export default function OrcamentosScreen({ navigation }) {
             <View style={{ width: 24 }} />
           </View>
 
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Condomínio</Text>
-            <FlatList
-              data={condominios}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              keyExtractor={(item) => item.id}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={[styles.condoOption, condominioId === item.id && styles.condoOptionSelected]}
-                  onPress={() => setCondominioId(item.id)}
-                >
-                  <Text style={[styles.condoOptionText, condominioId === item.id && styles.condoOptionTextSelected]}>
-                    {item.nome}
-                  </Text>
-                </TouchableOpacity>
-              )}
-            />
-          </View>
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Condomínio</Text>
+              <FlatList
+                data={condominios}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                keyExtractor={(item) => item.id}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={[styles.condoOption, condominioId === item.id && styles.condoOptionSelected]}
+                    onPress={() => setCondominioId(condominioId === item.id ? '' : item.id)}
+                  >
+                    <Text style={[styles.condoOptionText, condominioId === item.id && styles.condoOptionTextSelected]}>
+                      {item.nome}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              />
+            </View>
 
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Descrição</Text>
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              value={descricao}
-              onChangeText={setDescricao}
-              placeholder="Descrição do orçamento"
-              placeholderTextColor={Theme.Colors.textTertiary}
-              multiline
-              numberOfLines={4}
-            />
-          </View>
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Descrição</Text>
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                value={descricao}
+                onChangeText={setDescricao}
+                placeholder="Descrição do orçamento"
+                placeholderTextColor={Theme.Colors.textTertiary}
+                multiline
+                numberOfLines={4}
+              />
+            </View>
 
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Valor</Text>
-            <TextInput
-              style={styles.input}
-              value={valor}
-              onChangeText={setValor}
-              placeholder="0.00"
-              placeholderTextColor={Theme.Colors.textTertiary}
-              keyboardType="decimal-pad"
-            />
-          </View>
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Valor</Text>
+              <TextInput
+                style={styles.input}
+                value={valor}
+                onChangeText={setValor}
+                placeholder="0.00"
+                placeholderTextColor={Theme.Colors.textTertiary}
+                keyboardType="decimal-pad"
+              />
+            </View>
 
-          <View style={styles.inputContainer}>
-            <TouchableOpacity style={styles.imageButton} onPress={pickImage}>
-              <Ionicons name="camera-outline" size={24} color={Theme.Colors.primary} />
-              <Text style={styles.imageButtonText}>Adicionar Foto</Text>
+            <View style={styles.inputContainer}>
+              <TouchableOpacity 
+                style={[
+                  styles.imageButton,
+                  image && { borderBottomLeftRadius: 0, borderBottomRightRadius: 0, borderBottomWidth: 0 }
+                ]} 
+                onPress={pickImage}
+              >
+                <Ionicons name="camera-outline" size={24} color={Theme.Colors.primary} />
+                <Text style={styles.imageButtonText}>Adicionar Foto</Text>
+              </TouchableOpacity>
+              {image && <Image source={{ uri: image }} style={styles.previewImage} />}
+            </View>
+
+            <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+              <Text style={styles.saveButtonText}>Salvar</Text>
             </TouchableOpacity>
-            {image && <Image source={{ uri: image }} style={styles.previewImage} />}
-          </View>
-
-          <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-            <Text style={styles.saveButtonText}>Salvar</Text>
-          </TouchableOpacity>
+          </ScrollView>
         </View>
       </Modal>
 
@@ -420,13 +435,18 @@ const styles = StyleSheet.create({
     fontSize: Theme.Typography.fontSize.body,
     fontWeight: Theme.Typography.fontWeight.bold,
   },
-  item: {
+  itemContainer: {
+    marginBottom: Theme.Spacing.margin.md,
+  },
+  itemCardPart: {
     backgroundColor: Theme.Colors.cardBackground,
     flexDirection: 'row',
     padding: Theme.Spacing.padding.lg,
-    borderRadius: Theme.BorderRadius.lg,
-    marginBottom: Theme.Spacing.margin.md,
-    alignItems: 'center',
+    borderTopLeftRadius: Theme.BorderRadius.lg,
+    borderTopRightRadius: Theme.BorderRadius.lg,
+    borderBottomLeftRadius: Theme.BorderRadius.lg,
+    borderBottomRightRadius: Theme.BorderRadius.lg,
+    alignItems: 'flex-start',
     ...Theme.Shadows.card,
   },
   itemIconContainer: {
@@ -450,7 +470,7 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
   },
   itemContent: {
     flex: 1,
@@ -465,6 +485,14 @@ const styles = StyleSheet.create({
     fontSize: Theme.Typography.fontSize.small,
     color: Theme.Colors.textSecondary,
     marginBottom: 4,
+  },
+  itemAttachedImage: {
+    width: '100%',
+    height: 150,
+    borderBottomLeftRadius: Theme.BorderRadius.lg,
+    borderBottomRightRadius: Theme.BorderRadius.lg,
+    resizeMode: 'cover',
+    ...Theme.Shadows.card,
   },
   itemValue: {
     fontSize: Theme.Typography.fontSize.body,
@@ -535,8 +563,12 @@ const styles = StyleSheet.create({
   previewImage: {
     width: '100%',
     height: 200,
-    borderRadius: Theme.BorderRadius.md,
-    marginTop: Theme.Spacing.margin.md,
+    borderBottomLeftRadius: Theme.BorderRadius.md,
+    borderBottomRightRadius: Theme.BorderRadius.md,
+    borderWidth: 1,
+    borderColor: Theme.Colors.border,
+    borderTopWidth: 0,
+    marginTop: 0,
     resizeMode: 'cover',
   },
   saveButton: {

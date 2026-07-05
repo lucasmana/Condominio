@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, FlatList, Alert, Modal } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, FlatList, Alert, Modal, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../config/supabase';
 import { useAuth } from '../context/AuthContext';
 import { Theme } from '../theme/theme';
@@ -18,10 +19,12 @@ export default function TasksScreen({ navigation }) {
   const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
 
-  useEffect(() => {
-    loadTasks();
-    loadCondominios();
-  }, []);
+  useFocusEffect(
+    React.useCallback(() => {
+      loadTasks();
+      loadCondominios();
+    }, [user.id])
+  );
 
   const loadCondominios = async () => {
     try {
@@ -307,88 +310,90 @@ export default function TasksScreen({ navigation }) {
             <View style={{ width: 24 }} />
           </View>
 
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Condomínio</Text>
-            <FlatList
-              data={condominios}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              keyExtractor={(item) => item.id}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={[styles.condoOption, condominioId === item.id && styles.condoOptionSelected]}
-                  onPress={() => setCondominioId(condominioId === item.id ? '' : item.id)}
-                >
-                  <Text style={[styles.condoOptionText, condominioId === item.id && styles.condoOptionTextSelected]}>
-                    {item.nome}
-                  </Text>
-                </TouchableOpacity>
-              )}
-            />
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Descrição</Text>
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              value={descricao}
-              onChangeText={setDescricao}
-              placeholder="Descrição da tarefa"
-              placeholderTextColor={Theme.Colors.textTertiary}
-              multiline
-              numberOfLines={4}
-            />
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Data Limite</Text>
-            <TextInput
-              style={styles.input}
-              value={dataLimite}
-              onChangeText={setDataLimite}
-              placeholder="DD/MM/AAAA"
-              placeholderTextColor={Theme.Colors.textTertiary}
-            />
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Nível de Urgência</Text>
-            <View style={styles.urgencySelector}>
-              <TouchableOpacity 
-                style={[
-                  styles.urgencyOption, 
-                  nivelUrgencia === 'sem_urgencia' && styles.urgencyOptionSelectedBlue
-                ]} 
-                onPress={() => setNivelUrgencia('sem_urgencia')}
-              >
-                <Text style={[styles.urgencyOptionText, nivelUrgencia === 'sem_urgencia' && styles.urgencyOptionTextSelected]}>Sem Urgência</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={[
-                  styles.urgencyOption, 
-                  nivelUrgencia === 'emergencia' && styles.urgencyOptionSelectedYellow
-                ]} 
-                onPress={() => setNivelUrgencia('emergencia')}
-              >
-                <Text style={[styles.urgencyOptionText, nivelUrgencia === 'emergencia' && styles.urgencyOptionTextSelected]}>Emergência</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={[
-                  styles.urgencyOption, 
-                  nivelUrgencia === 'urgente' && styles.urgencyOptionSelectedRed
-                ]} 
-                onPress={() => setNivelUrgencia('urgente')}
-              >
-                <Text style={[styles.urgencyOptionText, nivelUrgencia === 'urgente' && styles.urgencyOptionTextSelected]}>Urgente</Text>
-              </TouchableOpacity>
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Condomínio</Text>
+              <FlatList
+                data={condominios}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                keyExtractor={(item) => item.id}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={[styles.condoOption, condominioId === item.id && styles.condoOptionSelected]}
+                    onPress={() => setCondominioId(condominioId === item.id ? '' : item.id)}
+                  >
+                    <Text style={[styles.condoOptionText, condominioId === item.id && styles.condoOptionTextSelected]}>
+                      {item.nome}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              />
             </View>
-          </View>
 
-          <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-            <Text style={styles.saveButtonText}>Salvar</Text>
-          </TouchableOpacity>
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Descrição</Text>
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                value={descricao}
+                onChangeText={setDescricao}
+                placeholder="Descrição da tarefa"
+                placeholderTextColor={Theme.Colors.textTertiary}
+                multiline
+                numberOfLines={4}
+              />
+            </View>
+
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Data Limite</Text>
+              <TextInput
+                style={styles.input}
+                value={dataLimite}
+                onChangeText={setDataLimite}
+                placeholder="DD/MM/AAAA"
+                placeholderTextColor={Theme.Colors.textTertiary}
+              />
+            </View>
+
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Nível de Urgência</Text>
+              <View style={styles.urgencySelector}>
+                <TouchableOpacity 
+                  style={[
+                    styles.urgencyOption, 
+                    nivelUrgencia === 'sem_urgencia' && styles.urgencyOptionSelectedBlue
+                  ]} 
+                  onPress={() => setNivelUrgencia('sem_urgencia')}
+                >
+                  <Text style={[styles.urgencyOptionText, nivelUrgencia === 'sem_urgencia' && styles.urgencyOptionTextSelected]}>Sem Urgência</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={[
+                    styles.urgencyOption, 
+                    nivelUrgencia === 'emergencia' && styles.urgencyOptionSelectedYellow
+                  ]} 
+                  onPress={() => setNivelUrgencia('emergencia')}
+                >
+                  <Text style={[styles.urgencyOptionText, nivelUrgencia === 'emergencia' && styles.urgencyOptionTextSelected]}>Emergência</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={[
+                    styles.urgencyOption, 
+                    nivelUrgencia === 'urgente' && styles.urgencyOptionSelectedRed
+                  ]} 
+                  onPress={() => setNivelUrgencia('urgente')}
+                >
+                  <Text style={[styles.urgencyOptionText, nivelUrgencia === 'urgente' && styles.urgencyOptionTextSelected]}>Urgente</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+              <Text style={styles.saveButtonText}>Salvar</Text>
+            </TouchableOpacity>
+          </ScrollView>
         </View>
       </Modal>
 

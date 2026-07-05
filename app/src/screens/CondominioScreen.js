@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, FlatList, Alert, Modal } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, FlatList, Alert, Modal, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../config/supabase';
 import { useAuth } from '../context/AuthContext';
 import { Theme } from '../theme/theme';
@@ -21,9 +22,11 @@ export default function CondominioScreen({ navigation }) {
   // Search Filter
   const [search, setSearch] = useState('');
 
-  useEffect(() => {
-    loadCondominios();
-  }, []);
+  useFocusEffect(
+    React.useCallback(() => {
+      loadCondominios();
+    }, [user.id])
+  );
 
   const loadCondominios = async () => {
     try {
@@ -192,43 +195,45 @@ export default function CondominioScreen({ navigation }) {
             <View style={{ width: 24 }} />
           </View>
 
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Nome</Text>
-            <TextInput 
-              style={styles.input} 
-              value={nome} 
-              onChangeText={setNome} 
-              placeholder="Nome do condomínio"
-              placeholderTextColor={Theme.Colors.textTertiary}
-            />
-          </View>
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Nome</Text>
+              <TextInput 
+                style={styles.input} 
+                value={nome} 
+                onChangeText={setNome} 
+                placeholder="Nome do condomínio"
+                placeholderTextColor={Theme.Colors.textTertiary}
+              />
+            </View>
 
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Endereço</Text>
-            <TextInput 
-              style={styles.input} 
-              value={endereco} 
-              onChangeText={setEndereco} 
-              placeholder="Endereço"
-              placeholderTextColor={Theme.Colors.textTertiary}
-            />
-          </View>
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Endereço</Text>
+              <TextInput 
+                style={styles.input} 
+                value={endereco} 
+                onChangeText={setEndereco} 
+                placeholder="Endereço"
+                placeholderTextColor={Theme.Colors.textTertiary}
+              />
+            </View>
 
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Descrição</Text>
-            <TextInput 
-              style={[styles.input, styles.textArea]} 
-              value={descricao} 
-              onChangeText={setDescricao} 
-              placeholder="Descrição"
-              placeholderTextColor={Theme.Colors.textTertiary}
-              multiline
-            />
-          </View>
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Descrição</Text>
+              <TextInput 
+                style={[styles.input, styles.textArea]} 
+                value={descricao} 
+                onChangeText={setDescricao} 
+                placeholder="Descrição"
+                placeholderTextColor={Theme.Colors.textTertiary}
+                multiline
+              />
+            </View>
 
-          <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-            <Text style={styles.saveButtonText}>Salvar</Text>
-          </TouchableOpacity>
+            <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+              <Text style={styles.saveButtonText}>Salvar</Text>
+            </TouchableOpacity>
+          </ScrollView>
         </View>
       </Modal>
 
