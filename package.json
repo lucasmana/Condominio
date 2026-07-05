@@ -1,0 +1,14 @@
+{
+  "name": "condominio-project",
+  "version": "1.0.0",
+  "description": "App de gestão de condomínios",
+  "scripts": {
+    "dev": "cd app && npm start",
+    "build": "cd app && npx expo export --platform web",
+    "start": "cd backend && npm start"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "private": true
+}
