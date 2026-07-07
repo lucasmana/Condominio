@@ -196,3 +196,48 @@ CREATE INDEX idx_tasks_condominio_id ON tasks(condominio_id);
 CREATE INDEX idx_orcamentos_user_id ON orcamentos(user_id);
 CREATE INDEX idx_orcamentos_condominio_id ON orcamentos(condominio_id);
 CREATE INDEX idx_reports_user_id ON reports(user_id);
+
+-- ============================================
+-- TABELA DE PERFIS (PROFILES) DOS USUÁRIOS
+-- ============================================
+
+CREATE TABLE profiles (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  email TEXT NOT NULL,
+  full_name TEXT,
+  avatar_url TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Habilitar RLS na tabela profiles
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+
+-- Políticas de segurança para profiles
+CREATE POLICY "Qualquer usuário autenticado pode ver perfis"
+  ON profiles FOR SELECT
+  USING (auth.role() = 'authenticated');
+
+CREATE POLICY "Usuários podem atualizar seu próprio perfil"
+  ON profiles FOR UPDATE
+  USING (auth.uid() = id);
+
+-- Trigger para criar perfil automaticamente ao registrar novo usuário no Supabase Auth
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS trigger AS $$
+BEGIN
+  INSERT INTO public.profiles (id, email, full_name, avatar_url)
+  VALUES (
+    new.id,
+    new.email,
+    COALESCE(new.raw_user_meta_data->>'full_name', ''),
+    COALESCE(new.raw_user_meta_data->>'avatar_url', '')
+  );
+  RETURN new;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+CREATE INDEX idx_profiles_email ON profiles(email);

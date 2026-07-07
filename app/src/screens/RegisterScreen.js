@@ -28,7 +28,8 @@ export default function RegisterScreen() {
     if (error) {
       Alert.alert('Erro', error.message);
     } else {
-      Alert.alert('Sucesso', 'Cadastro realizado! Verifique seu email.');
+      // Redireciona automaticamente para a tela de Login passando o parâmetro de sucesso
+      navigation.navigate('Login', { registerSuccess: true });
     }
   };
 

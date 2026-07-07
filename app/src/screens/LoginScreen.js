@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Animated, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import * as SecureStore from 'expo-secure-store';
@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import { Theme } from '../theme/theme';
 
-export default function LoginScreen() {
+export default function LoginScreen({ route }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -37,6 +37,13 @@ export default function LoginScreen() {
     });
   };
 
+  useEffect(() => {
+    if (route?.params?.registerSuccess) {
+      showToast('success', 'Cadastro realizado! Faça login para começar.');
+      navigation.setParams({ registerSuccess: undefined });
+    }
+  }, [route?.params?.registerSuccess]);
+
   const handleLogin = async () => {
     if (!email || !password) {
       showToast('error', 'Preencha todos os campos!');
@@ -48,7 +55,7 @@ export default function LoginScreen() {
     
     if (error) {
       const errMsg = error.message.toLowerCase();
-      let feedbackMsg = 'Usuário não encontrado ou não cadastrado.';
+      let feedbackMsg = error.message;
       let type = 'error'; // Red
       
       if (errMsg.includes('password') || errMsg.includes('senha') || errMsg.includes('incorrect password')) {
@@ -57,9 +64,12 @@ export default function LoginScreen() {
       } else if (errMsg.includes('email') || errMsg.includes('invalid email') || errMsg.includes('email incorreto')) {
         feedbackMsg = 'Email incorreto.';
         type = 'warning'; // Amarelo
-      } else {
-        feedbackMsg = 'Usuário não encontrado ou não cadastrado.';
-        type = 'error'; // Red
+      } else if (errMsg.includes('confirm') || errMsg.includes('confirme')) {
+        feedbackMsg = 'Por favor, confirme seu e-mail antes de fazer login.';
+        type = 'warning'; // Amarelo
+      } else if (errMsg.includes('not found') || errMsg.includes('invalid grant') || errMsg.includes('não cadastrado')) {
+        feedbackMsg = 'Usuário não cadastrado ou dados incorretos.';
+        type = 'error';
       }
       showToast(type, feedbackMsg);
     } else {
